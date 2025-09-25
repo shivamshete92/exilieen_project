@@ -6,36 +6,43 @@ on:
       - main
 
 jobs:
+  check-actions-access:
+    name: Verify Public Actions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Test public action
+        uses: actions/checkout@v3
+      # If this step succeeds, GitHub can access public actions
+
   frontend-deploy:
     name: Build & Deploy Frontend
     runs-on: ubuntu-latest
+    needs: check-actions-access
     steps:
-      # 1. Checkout repo
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # 3. Inject frontend .env automatically
       - name: Create frontend .env
         working-directory: ./frontend
         run: |
           echo "VITE_API_URL=http://${{ secrets.EC2_HOST }}:5000" > .env
 
-      # 4. Install frontend dependencies & build
       - name: Build frontend
         working-directory: ./frontend
         run: |
           npm install
           npm run build
 
-      # 5. Sync frontend build to S3 (permanent fix)
-      - name: Deploy frontend to S3
-        uses: aws-actions/s3-sync@v2
+      - name: Deploy frontend to S3 (force fix)
+        uses: aws-actions/s3-sync@v2.0.1 # exact full tag avoids caching issues
         with:
           bucket: exilieen-frontend-bucket
           region: ${{ secrets.AWS_REGION }}
@@ -49,36 +56,27 @@ jobs:
     runs-on: ubuntu-latest
     needs: frontend-deploy
     steps:
-      # 1. Checkout repo
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 2. Setup SSH key
       - name: Setup SSH key
         run: |
           echo "${{ secrets.EC2_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
-      # 3. Deploy backend to EC2
       - name: Deploy backend
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            # Ensure backend folder exists
             if [ ! -d "exilieen_project/backend" ]; then
               mkdir -p exilieen_project
             fi
             cd exilieen_project/backend
-
-            # Initialize git repo if not exists and pull latest code
             git init
             git remote add origin https://github.com/shivamshete92/exilieen_project.git || true
             git fetch origin
             git reset --hard origin/main
-
-            # Install dependencies
             npm install
-
-            # Restart backend using PM2
             pm2 stop exilieen-backend || true
             pm2 start server.js --name exilieen-backend
+            pm2 save
           EOF
