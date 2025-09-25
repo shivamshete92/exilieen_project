@@ -35,7 +35,7 @@ jobs:
 
       # 5. Sync frontend build to S3
       - name: Deploy frontend to S3
-        uses: aws-actions/s3-sync@v2
+        uses: aws-actions/s3-sync@v1
         with:
           bucket: exilieen-frontend-bucket
           region: ${{ secrets.AWS_REGION }}
