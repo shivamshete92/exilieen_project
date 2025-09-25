@@ -1,0 +1,77 @@
+name: Deploy Exilieen Fullstack
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  frontend-deploy:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Inject frontend .env automatically
+      - name: Create .env file for frontend
+        working-directory: ./frontend
+        run: |
+          echo "VITE_API_URL=http://${{ secrets.EC2_HOST }}:5000" > .env
+
+      - name: Install dependencies & build
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Deploy frontend to S3
+        uses: aws-actions/s3-sync@v2
+        with:
+          bucket: exilieen-frontend-bucket
+          region: ${{ secrets.AWS_REGION }}
+          source-dir: ./frontend/dist
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  backend-deploy:
+    name: Deploy Backend to EC2
+    runs-on: ubuntu-latest
+    needs: frontend-deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key
+        run: |
+          echo "${{ secrets.EC2_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+      - name: Deploy backend to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            # If repo folder doesn't exist, create it
+            if [ ! -d "exilieen_project/backend" ]; then
+              mkdir -p exilieen_project
+            fi
+            cd exilieen_project/backend
+
+            # Pull latest code
+            git init
+            git remote add origin https://github.com/shivamshete92/exilieen_project.git || true
+            git fetch
+            git reset --hard origin/main
+
+            # Install dependencies
+            npm install
+
+            # Restart backend with PM2
+            pm2 stop exilieen-backend || true
+            pm2 start server.js --name exilieen-backend
+          EOF
