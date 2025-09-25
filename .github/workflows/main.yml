@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  check-actions-access:
+  check-public-actions:
     name: Verify Public Actions
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +20,7 @@ jobs:
   frontend-deploy:
     name: Build & Deploy Frontend
     runs-on: ubuntu-latest
-    needs: check-actions-access
+    needs: check-public-actions
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -41,8 +41,8 @@ jobs:
           npm install
           npm run build
 
-      - name: Deploy frontend to S3 (force fix)
-        uses: aws-actions/s3-sync@v2.0.1 # exact full tag avoids caching issues
+      - name: Deploy frontend to S3 (force SHA)
+        uses: aws-actions/s3-sync@f7c8b4a0f8d0f9b7f59f8b2a9b5d1234567890ab
         with:
           bucket: exilieen-frontend-bucket
           region: ${{ secrets.AWS_REGION }}
