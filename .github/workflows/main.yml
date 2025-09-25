@@ -41,15 +41,15 @@ jobs:
           npm install
           npm run build
 
-      - name: Deploy frontend to S3 (force SHA)
-        uses: aws-actions/s3-sync@f7c8b4a0f8d0f9b7f59f8b2a9b5d1234567890ab
+      - name: Deploy frontend to S3
+        uses: aws-actions/s3-sync@v1
         with:
-          bucket: exilieen-frontend-bucket
-          region: ${{ secrets.AWS_REGION }}
-          source-dir: ./frontend/dist
+              bucket: exilieen-frontend-bucket   # <-- put your actual bucket name here
+              region: ${{ secrets.AWS_REGION }}
+              source-dir: ./frontend/dist
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   backend-deploy:
     name: Deploy Backend to EC2
