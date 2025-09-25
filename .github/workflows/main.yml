@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '18'
 
-      # 3. Create .env for frontend automatically
+      # 3. Inject frontend .env automatically
       - name: Create frontend .env
         working-directory: ./frontend
         run: |
@@ -33,9 +33,9 @@ jobs:
           npm install
           npm run build
 
-      # 5. Sync frontend build to S3
+      # 5. Sync frontend build to S3 (permanent fix)
       - name: Deploy frontend to S3
-        uses: aws-actions/s3-sync@v1
+        uses: aws-actions/s3-sync@v2
         with:
           bucket: exilieen-frontend-bucket
           region: ${{ secrets.AWS_REGION }}
@@ -69,7 +69,7 @@ jobs:
             fi
             cd exilieen_project/backend
 
-            # Initialize git repo if not exists and fetch latest code
+            # Initialize git repo if not exists and pull latest code
             git init
             git remote add origin https://github.com/shivamshete92/exilieen_project.git || true
             git fetch origin
