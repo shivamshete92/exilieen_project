@@ -42,7 +42,7 @@ jobs:
           npm run build
 
       - name: Deploy frontend to S3
-        uses: aws-actions/exilieen-frontend-bucket@v1
+        uses: aws-actions/s3-sync@v3
         with:
               bucket: exilieen-frontend-bucket   # <-- put your actual bucket name here
               region: ${{ secrets.AWS_REGION }}
